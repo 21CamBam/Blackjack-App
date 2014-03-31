@@ -19,8 +19,6 @@ Deck deck;
 Status status;
 DoubSplit doubsplit;
 
-int player_sum = 0, dealer_sum = 0;
-
 class Blackjack : public Hand
 {
 public:
@@ -29,11 +27,14 @@ public:
 	void play_game(void)
 	{
 		string reply;
+		int player_sum = 0, dealer_sum = 0;
+
 		do
 		{
 			status = GOOD;
 			player_sum = 0;
 			dealer_sum = 0;
+			deck.reset();
 
 			player.new_hand(deck);
 			dealer.new_hand(deck);
@@ -43,12 +44,37 @@ public:
 			cout << "\nPlayer" << endl;
 			player.print();
 
-			evaluate_player();
+			evaluate_player(&dealer_sum, &player_sum);
 			if (status != BLACKJACK)
-				evaluate_dealer();
+			{
+				evaluate_dealer(&dealer_sum, &player_sum);
+			}
+			else
+			{
+				next_move(&dealer_sum, &player_sum);
+				continue;
+			}
+
+			if (status == WIN)
+			{
+				next_move(&dealer_sum, &player_sum);
+				continue;
+			}
+			if (status == PUSH)
+			{
+				next_move(&dealer_sum, &player_sum);
+				continue;
+			}
 
 			if (status != BUST)
-				next_move();
+			{
+				next_move(&dealer_sum, &player_sum);
+			}
+			else
+			{
+				next_move(&dealer_sum, &player_sum);
+				continue;
+			}
 
 			cout << "Play again? [yes or no]: ";
 			cin >> reply;
@@ -56,17 +82,18 @@ public:
 
 	}
 
-	void next_move(void)
+	void next_move(int *dealer_sum, int *player_sum)
 	{
 		string answer;
 		if (status == BLACKJACK)
 		{
 			cout << "\nDealer" << endl;
 			dealer.print();
-			cout << "Total: " << dealer_sum << endl;
+			cout << "Total: " << *dealer_sum << endl;
+
 			cout << "\nPlayer" << endl;
 			player.print();
-			cout << "Total: " << player_sum << endl;
+			cout << "Total: " << *player_sum << endl;
 			cout << "\n\nBLACKJACK!!!" << endl;
 			return;
 		}
@@ -75,10 +102,10 @@ public:
 		{
 			cout << "\nDealer" << endl;
 			dealer.print();
-			cout << "Total: " << dealer_sum << endl;
+			cout << "Total: " << *dealer_sum << endl;
 			cout << "\nPlayer" << endl;
 			player.print();
-			cout << "Total: " << player_sum << endl;
+			cout << "Total: " << *player_sum << endl;
 			cout << "\n\nWINNER!!!" << endl;
 			return;
 		}
@@ -87,10 +114,10 @@ public:
 		{
 			cout << "\nDealer" << endl;
 			dealer.print();
-			cout << "Total: " << dealer_sum << endl;
+			cout << "Total: " << *dealer_sum << endl;
 			cout << "\nPlayer" << endl;
 			player.print();
-			cout << "Total: " << player_sum << endl;
+			cout << "Total: " << *player_sum << endl;
 			cout << "\n\nLOSER!!!" << endl;
 			return;
 		}
@@ -106,22 +133,22 @@ public:
 			check_hand_for_double();
 			if (doubsplit == DOUBLE)
 			{
-				cout << "Hit, Double Down or Stay" << endl;
+				cout << "\n\nHit, Double Down or Stay" << endl;
 				cin >> answer;
 				if (answer[0] == 'H' || answer[0] == 'h')
 				{
-					player_sum = hit();
+					*player_sum = hit(dealer_sum, player_sum);
 					return;
 				}
 				else if (answer[0] == 'S' || answer[0] == 's')
 				{
 					cout << "\nDealer" << endl;
 					dealer.print();
-					cout << "Total: " << dealer_sum << endl;
+					cout << "Total: " << *dealer_sum << endl;
 					cout << "\nPlayer" << endl;
 					player.print();
 					cout << "Total: " << player_sum << endl;
-					compare_hands();
+					compare_hands(dealer_sum, player_sum);
 					return;
 				}
 				else
@@ -132,80 +159,77 @@ public:
 			}
 			else
 			{
-				cout << "Hit or Stay" << endl;
+				cout << "\n\nHit or Stay" << endl;
 				cin >> answer;
 				if (answer[0] == 'H' || answer[0] == 'h')
 				{
-					player_sum = hit();
+					*player_sum = hit(dealer_sum, player_sum);
 					return;
 				}
 				else if (answer[0] == 'S' || answer[0] == 's')
 				{
 					cout << "\nDealer" << endl;
 					dealer.print();
-					cout << "Total: " << dealer_sum << endl;
+					cout << "Total: " << *dealer_sum << endl;
 					cout << "\nPlayer" << endl;
 					player.print();
 					cout << "Total: " << player_sum << endl;
-					compare_hands();
+					compare_hands(dealer_sum, player_sum);
 					return;
 				}
 			}
 		}
 	}
 
-	int hit(void)
+	int hit(int *dealer_sum, int *player_sum)
 	{
 		int sum = 0;
 		player.new_card(deck, player.num_cards);
 		player.num_cards++;
 		player.print();
 
-		for (int i = 0; i <= player.num_cards; i++)
+		for (int i = 0; i < player.num_cards; i++)
 		{
 			sum += card_value((player.hand)[i]);
 		}
-
+		*player_sum = sum;
 		cout << "Total: " << sum << endl;
 
 		if (sum > 21)
 		{
 			status = BUST;
-			next_move();
+			next_move(dealer_sum, player_sum);
 			return sum;
 		}
 		else
 		{
 			status = GOOD;
-			next_move();
+			next_move(dealer_sum, player_sum);
 			return sum;
 		}
 	}
 
-	int draw(void)
+	int draw(int *dealer_sum, int *player_sum)
 	{
 		int sum = 0;
 		dealer.new_card(deck, dealer.num_cards);
 		dealer.num_cards++;
-		dealer.print();
 
-		for (int i = 0; i <= dealer.num_cards; i++)
+		for (int i = 0; i < dealer.num_cards; i++)
 		{
 			sum += card_value((dealer.hand)[i]);
 		}
-
-		cout << "Total: " << sum << endl;
-
+		*dealer_sum = sum;
 		if (sum > 21)
 		{
 			status = WIN;
-			next_move();
+			next_move(dealer_sum, player_sum);
 			return sum;
 		}
 		else
 		{
 			status = GOOD;
-			next_move();
+			next_move(dealer_sum, player_sum);
 			return sum;
 		}
 	}
@@ -214,19 +238,21 @@ public:
 	{
 		int val = duece.get() % 13;
 
-		if (val > 0 && val < 10) // If the card is 2 - 10
+		if (val > 0 && val < 9) // If the card is 2 - 10
 			return val++;
 
-		if (val >= 10)
+		if (val >= 9)
 			return 10;
 
 		if (val == 0)
 			return 11;
+
+		return 0;
 	}
 
 	void check_hand_for_double(void)
 	{
-		int card1 = card_value((player.hand)[0]), card2 = card_value((player.hand)[1]);
+		int card1 = card_value((player.hand)[0]), card2 = card_value((player.hand)[1]) + 1;
 		if (card1 == 10 || card2 == 10)
 		{
 			doubsplit = DOUBLE;
@@ -236,31 +262,25 @@ public:
 		return;
 	}
 
-	void evaluate_dealer(void)
+	void evaluate_dealer(int *dealer_sum, int *player_sum)
 	{
+		int sum = 0;
 		for (int i = 0; i < dealer.num_cards; i++)
 		{
-			dealer_sum += card_value((dealer.hand)[i]);
+			sum += card_value((dealer.hand)[i]);
 		}
-
-		if (dealer_sum == 21)
+		*dealer_sum = sum;
+		if (*dealer_sum == 21)
 		{
 			status = BUST;
-			next_move();
+			next_move(dealer_sum, player_sum);
 		}
 
-		while (dealer_sum < 17)
+		while (*dealer_sum < 17)
 		{
-			draw();
-			cout << "Dealer" << endl;
-			dealer.print();
-			cout << "Total: " << dealer_sum << endl;
-			for (int i = 0; i <= dealer.num_cards; i++)
-			{
-				dealer_sum += card_value((dealer.hand)[i]);
-			}
+			*dealer_sum = draw(dealer_sum, player_sum);
 		}
-		if (dealer_sum > 21)
+		if (*dealer_sum > 21)
 		{
 			status = WIN;
 			return;
@@ -268,14 +288,14 @@ public:
 		return;
 	}
 
-	void evaluate_player(void)
+	void evaluate_player(int *dealer_sum, int *player_sum)
 	{
 		int sumd = 0, i;
 		for (i = 0; i < player.num_cards; i++)
 		{
 			sumd += card_value((player.hand)[i]);
 		}
-
+		*player_sum = sumd;
 		if (sumd == 21)
 		{
 			status = BLACKJACK;
@@ -283,14 +303,14 @@ public:
 		return;
 	}
 
-	void compare_hands(void)
+	void compare_hands(int *dealer_sum, int *player_sum)
 	{
 		int sumd = 0, sump = 0;
-		for (int i = 0; i <= card_value((dealer.hand)[i]); i++)
+		for (int i = 0; i <= dealer.num_cards; i++)
 		{
 			sumd += card_value((dealer.hand)[i]);
 		}
-		for (int i = 0; i <= card_value((player.hand)[i]); i++)
+		for (int i = 0; i <= player.num_cards; i++)
 		{
 			sump += card_value((player.hand)[i]);
 		}
@@ -298,16 +318,19 @@ public:
 		if (sumd == sump)
 		{
 			status = PUSH;
+			next_move(dealer_sum, player_sum);
 			return;
 		}
 		else if (sumd > sump)
 		{
 			status = BUST;
+			next_move(dealer_sum, player_sum);
 			return;
 		}
 		else
 		{
 			status = WIN;
+			next_move(dealer_sum, player_sum);
 			return;
 		}
 	}
